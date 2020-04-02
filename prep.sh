@@ -4,20 +4,48 @@
 
 set -e
 
-PROJECT_NAME=$1
-CLUSTER_NAME=$2
-ISTIO_VERSION=$3
-DEFAULT_ISTIO_VERSION="1.4.3"
-FIREWALL_RULE="$CLUSTER_NAME-allow-master-to-istiowebhook"
-SLEEP_TIME="120"
+# error return function
+error_exit() {
+	echo "$1" 1>&2
+	exit 1
+}
 
-uninstall_istio()
-{
+# used for uninstalling istio
+uninstall_istio() {
 	echo "############ uninstalling istio-$ISTIO_VERSION ############"
   cd istio-$ISTIO_VERSION
   export PATH=$PWD/bin:$PATH
   istioctl manifest generate --set profile=demo | kubectl delete -f -
 }
+
+# check cluster and region provided
+environment_validation() {
+  if [ -z "$CLUSTER_NAME" ]; then
+  echo "Need a cluster name"
+  exit 1
+  else
+    CLUSTER_NAME_CHECK=$(gcloud container clusters list --filter "name:$CLUSTER_NAME")
+    if [ -z "$CLUSTER_NAME_RESULT" ]; then
+      error_exit  "$LINENO: $CLUSTER_NAME not a valid region" 1>&2
+    fi
+  fi
+
+  if [ -z "$REGION" ]; then
+    error_exit  "$LINENO: need a valid region" 1>&2
+  else
+    REGION_CHECK=$(gcloud compute regions list --filter=name=$REGION --format='value(name)')
+    if [ "$REGION" != "$REGION_CHECK" ]; then
+      error_exit  "$LINENO: $REGION not a valid region" 1>&2
+    fi
+  fi
+}
+
+CLUSTER_NAME=$1
+REGION=$2
+ISTIO_VERSION=$3
+DEFAULT_ISTIO_VERSION="1.4.3"
+FIREWALL_RULE="$CLUSTER_NAME-allow-master-to-istiowebhook"
+
 
 # uninstall and then exit
 if [[ $1 == "uninstall" ]]; then
@@ -30,28 +58,9 @@ if [[ $1 == "uninstall" ]]; then
   exit 0
 fi
 
+# invoke validation function
+environment_validation
 
-if [ -z "$PROJECT_NAME" ]; then
-  echo "Need a valid project name"
-  exit 1
-else
-  PROJECT_NAME_RESULT=`gcloud projects list --filter="name:$PROJECT_NAME"`
-  if [ -z "$PROJECT_NAME_RESULT" ]; then
-     echo "$PROJECT_NAME is not a valid project"
-     exit 1
-  fi
-fi
-
-if [ -z "$CLUSTER_NAME" ]; then
-  echo "Need a cluster name"
-  exit 1
-else
-  CLUSTER_NAME_RESULT=`gcloud container clusters list --filter "name:$CLUSTER_NAME"`
-  if [ -z "$CLUSTER_NAME_RESULT" ]; then
-     echo "$CLUSTER_NAME is not a valid cluster"
-     exit 1
-  fi
-fi
 
 if [ -z "$ISTIO_VERSION" ]; then
   echo "############## Installing Istio 1.4.3 ##############"
