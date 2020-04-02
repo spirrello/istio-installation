@@ -30,11 +30,19 @@ environment_validation() {
   fi
 
   if [[ -z "$CLUSTER_NAME" ]]; then
-  error_exit  "$LINENO: Need a cluster name" 1>&2
+    error_exit  "$LINENO: Need a cluster name" 1>&2
   else
     CLUSTER_NAME_CHECK=$(gcloud container clusters list --region $REGION --filter "name:$CLUSTER_NAME" --format='value(name)')
     if [[ "$CLUSTER_NAME" != "$CLUSTER_NAME_CHECK" ]]; then
       error_exit  "$LINENO: $CLUSTER_NAME not a valid cluster" 1>&2
+    fi
+  fi
+
+  if [[ -z "$HOST_RECORD" ]]; then
+    error_exit  "$LINENO: need a host record for Istio ingress gateway" 1>&2
+  else
+    if [[ "$HOST_RECORD" != *".com"* ]]; then
+      error_exit  "$LINENO: $HOST_RECORD is not a valid host rcord for the Istio ingress gateway." 1>&2
     fi
   fi
 }
