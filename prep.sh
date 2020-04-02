@@ -52,6 +52,7 @@ update_istio_manifests() {
   # traverse back to the root dir
   cd $SCRIPT_DIR
   echo "############## updating Istio gateway ##############"
+  echo "HOST_RECORD:" $HOST_RECORD
   sed -i "s/INGRESS_GATEWAY_HOST/$HOST_RECORD/g" manifests/ingressgateway.yaml
   sed -i "s/ISTIO_VERSION/$ISTIO_VERSION/g" manifests/ingressgateway.yaml
   kubectl apply -f manifests/ingressgateway.yaml
