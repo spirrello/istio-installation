@@ -41,6 +41,8 @@ environment_validation() {
 
 # update manifest per environment
 update_istio_manifests() {
+  # traverse back to the root dir
+  cd $SCRIPT_DIR
   echo "############## updating Istio gateway ##############"
   sed -i "s/INGRESS_GATEWAY_HOST/$HOST_RECORD/g" manifests/ingressgateway.yaml
   sed -i "s/ISTIO_VERSION/$ISTIO_VERSION/g" manifests/ingressgateway.yaml
@@ -82,7 +84,7 @@ ISTIO_VERSION=$3
 HOST_RECORD=$4
 DEFAULT_ISTIO_VERSION="1.4.3"
 FIREWALL_RULE="$CLUSTER_NAME-allow-master-to-istiowebhook"
-
+SCRIPT_DIR=$PWD
 
 # uninstall and then exit
 if [[ $1 == "uninstall" ]]; then
