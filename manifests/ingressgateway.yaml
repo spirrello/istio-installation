@@ -4,7 +4,7 @@ metadata:
   labels:
     operator.istio.io/component: IngressGateway
     operator.istio.io/managed: Reconcile
-    operator.istio.io/version: 1.4.3
+    operator.istio.io/version: ISTIO_VERSION
     release: istio
   name: ingressgateway
   namespace: istio-system
@@ -13,7 +13,7 @@ spec:
     istio: ingressgateway
   servers:
   - hosts:
-    - '*.preprod.ncrsaas.com'
+    - 'INGRESS_GATEWAY_HOST'
     port:
       name: https
       number: 443
