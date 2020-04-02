@@ -56,6 +56,26 @@ install_istio() {
   istioctl manifest apply --set profile=demo
 }
 
+# function for prepping gke
+prep_gke() {
+  #check if cluster rolebinding exists
+  kubectl get clusterrolebinding cluster-admin-binding || CLUSTER_ROLE_STATUS=$?
+  if [[ $CLUSTER_ROLE_STATUS > 0 ]]; then
+    echo "############## Creating clusterrolebinding ##############"
+    kubectl create clusterrolebinding cluster-admin-binding --clusterrole=cluster-admin --user=$(gcloud config get-value core/account)
+  else
+    echo "############## clusterrolebinding already exists ##############"
+  fi
+
+  #label default namespace
+  kubectl label namespace default istio-injection=enabled || NS_LABEL_STATUS=$?
+  if [[ $NS_LABEL_STATUS > 0 ]]; then
+    echo "############## default namespace is already labeled ##############"
+  else
+    echo "############## default namespace now labeled ##############"
+  fi
+}
+
 CLUSTER_NAME=$1
 REGION=$2
 ISTIO_VERSION=$3
@@ -87,22 +107,8 @@ else
   echo "Installing Istio $ISTIO_VERSION"
 fi
 
-#check if cluster rolebinding exists
-kubectl get clusterrolebinding cluster-admin-binding || CLUSTER_ROLE_STATUS=$?
-if [[ $CLUSTER_ROLE_STATUS > 0 ]]; then
-  echo "############## Creating clusterrolebinding ##############"
-  kubectl create clusterrolebinding cluster-admin-binding --clusterrole=cluster-admin --user=$(gcloud config get-value core/account)
-else
-  echo "############## clusterrolebinding already exists ##############"
-fi
-
-#label default namespace
-kubectl label namespace default istio-injection=enabled || NS_LABEL_STATUS=$?
-if [[ $NS_LABEL_STATUS > 0 ]]; then
-  echo "############## default namespace is already labeled ##############"
-else
-  echo "############## default namespace now labeled ##############"
-fi
+# prep k8s for istio installation
+prep_gke
 
 # install istio function
 install_istio
