@@ -1,13 +1,35 @@
 #!/usr/bin/env bash
 
+
+
 set -e
 
 PROJECT_NAME=$1
 CLUSTER_NAME=$2
 ISTIO_VERSION=$3
-DEFAULT_ISTIO_VERSION="1.5.1"
+DEFAULT_ISTIO_VERSION="1.4.3"
 FIREWALL_RULE="$CLUSTER_NAME-allow-master-to-istiowebhook"
 SLEEP_TIME="120"
+
+uninstall_istio()
+{
+	echo "############ uninstalling istio-$ISTIO_VERSION ############"
+  cd istio-$ISTIO_VERSION
+  export PATH=$PWD/bin:$PATH
+  istioctl manifest generate --set profile=demo | kubectl delete -f -
+}
+
+# uninstall and then exit
+if [[ $1 == "uninstall" ]]; then
+  if [ -z "$2" ]; then
+    ISTIO_VERSION=$DEFAULT_ISTIO_VERSION
+  else
+    ISTIO_VERSION=$2
+  fi
+  uninstall_istio
+  exit 0
+fi
+
 
 if [ -z "$PROJECT_NAME" ]; then
   echo "Need a valid project name"
