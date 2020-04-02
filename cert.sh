@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-K8S_SECRET="istio-ingressgateway-cert"
+K8S_SECRET="istio-ingressgateway-certs"
 NAMESPACE="istio-system"
 
 CERT=$1
