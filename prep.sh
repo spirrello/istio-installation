@@ -90,7 +90,6 @@ CLUSTER_NAME=$1
 REGION=$2
 ISTIO_VERSION=$3
 HOST_RECORD=$4
-DEFAULT_ISTIO_VERSION="1.4.3"
 FIREWALL_RULE="$CLUSTER_NAME-allow-master-to-istiowebhook"
 SCRIPT_DIR=$PWD
 
@@ -108,14 +107,6 @@ fi
 
 # invoke validation function
 environment_validation
-
-
-if [[ -z "$ISTIO_VERSION" ]]; then
-  echo "############## Installing Istio 1.4.3 ##############"
-  ISTIO_VERSION=$DEFAULT_ISTIO_VERSION
-else
-  echo "Installing Istio $ISTIO_VERSION"
-fi
 
 # prep k8s for istio installation
 prep_gke
