@@ -6,8 +6,8 @@ CERT=$1
 KEY=$2
 
 # check if the certs match
-CERT_CHECK=$(openssl x509 -modulus -noout -in $CERT  | sha256sum)
-KEY_CHECK=$(openssl rsa -modulus -noout -in $KEY | sha256sum)
+CERT_CHECK=$(openssl x509 -modulus -noout -in $CERT  | sha256sum | awk '{print $1}')
+KEY_CHECK=$(openssl rsa -modulus -noout -in $KEY | sha256sum | awk '{print $1}')
 
 if [[ $CERT_CHECK == $CERT_KEY_CHECK ]]; then
   echo "Certificate is valid, creating K8s secret now..."
