@@ -20,22 +20,21 @@ uninstall_istio() {
 
 # check cluster and region provided
 environment_validation() {
-  if [ -z "$CLUSTER_NAME" ]; then
-  echo "Need a cluster name"
-  exit 1
+  if [[ -z "$REGION" ]]; then
+    error_exit  "$LINENO: need a region" 1>&2
   else
-    CLUSTER_NAME_CHECK=$(gcloud container clusters list --filter "name:$CLUSTER_NAME")
-    if [ -z "$CLUSTER_NAME_RESULT" ]; then
-      error_exit  "$LINENO: $CLUSTER_NAME not a valid region" 1>&2
+    REGION_CHECK=$(gcloud compute regions list --filter "name=$REGION" --format='value(name)')
+    if [[ "$REGION" != "$REGION_CHECK" ]]; then
+      error_exit  "$LINENO: $REGION not a valid region" 1>&2
     fi
   fi
 
-  if [ -z "$REGION" ]; then
-    error_exit  "$LINENO: need a valid region" 1>&2
+  if [[ -z "$CLUSTER_NAME" ]]; then
+  error_exit  "$LINENO: Need a cluster name" 1>&2
   else
-    REGION_CHECK=$(gcloud compute regions list --filter=name=$REGION --format='value(name)')
-    if [ "$REGION" != "$REGION_CHECK" ]; then
-      error_exit  "$LINENO: $REGION not a valid region" 1>&2
+    CLUSTER_NAME_CHECK=$(gcloud container clusters list --region $REGION --filter "name:$CLUSTER_NAME" --format='value(name)')
+    if [[ $CLUSTER_NAME ! = "$CLUSTER_NAME_CHECK" ]]; then
+      error_exit  "$LINENO: $CLUSTER_NAME not a valid cluster" 1>&2
     fi
   fi
 }
@@ -62,7 +61,7 @@ fi
 environment_validation
 
 
-if [ -z "$ISTIO_VERSION" ]; then
+if [[ -z "$ISTIO_VERSION" ]]; then
   echo "############## Installing Istio 1.4.3 ##############"
   ISTIO_VERSION=$DEFAULT_ISTIO_VERSION
 else
@@ -71,7 +70,7 @@ fi
 
 #check if cluster rolebinding exists
 kubectl get clusterrolebinding cluster-admin-binding || CLUSTER_ROLE_STATUS=$?
-if [ $CLUSTER_ROLE_STATUS > 0 ]; then
+if [[ $CLUSTER_ROLE_STATUS > 0 ]]; then
   echo "############## Creating clusterrolebinding ##############"
   kubectl create clusterrolebinding cluster-admin-binding --clusterrole=cluster-admin --user=$(gcloud config get-value core/account)
 else
@@ -80,7 +79,7 @@ fi
 
 #label default namespace
 kubectl label namespace default istio-injection=enabled || NS_LABEL_STATUS=$?
-if [ $NS_LABEL_STATUS > 0 ]; then
+if [[ $NS_LABEL_STATUS > 0 ]]; then
   echo "############## default namespace is already labeled ##############"
 else
   echo "############## default namespace now labeled ##############"
