@@ -89,16 +89,19 @@ istioctl manifest apply --set profile=demo
 
 #might need to run this in the case of timeouts for side car injection
 #fetch info then create firewall rule
-CLUSTER_REGION=$(gcloud container clusters list --filter "name:$CLUSTER_NAME" | grep -v NAME | awk '{print $2}')
-NETWORK=$(gcloud container clusters describe $CLUSTER_NAME --region $CLUSTER_REGION --format json | jq -r .network)
-echo "CLUSTER_REGION: $CLUSTER_REGION"
-MASTER_CIDR=$(gcloud container clusters describe $CLUSTER_NAME --region $CLUSTER_REGION --format json | jq -r .privateClusterConfig.masterIpv4CidrBlock)
-echo "MASTER_CIDR: $MASTER_CIDR"
-NODE_POOL=$(gcloud container node-pools list --region $CLUSTER_REGION --cluster $CLUSTER_NAME | grep -v NAME | awk '{print $1}')
-echo "NODE_POOL: $NODE_POOL"
-TARGET_TAG=$(gcloud container node-pools describe $NODE_POOL --region $CLUSTER_REGION --cluster $CLUSTER_NAME --format json | jq -r .config.tags[0])
-echo "TARGET_TAG: $TARGET_TAG"
-gcloud compute firewall-rules create $FIREWALL_RULE --network $NETWORK --allow=tcp:9443 --direction=INGRESS --enable-logging --source-ranges=$MASTER_CIDR --target-tags=$TARGET_TAG || FIREWALL_RULE_STATUS=$?
-
+#by default we won't create the firewall rules.
+if [[ $4 == "--fw" ]]; then
+  echo "############## creating firewall rule for istio webhook ##############"
+  CLUSTER_REGION=$(gcloud container clusters list --filter "name:$CLUSTER_NAME" | grep -v NAME | awk '{print $2}')
+  NETWORK=$(gcloud container clusters describe $CLUSTER_NAME --region $CLUSTER_REGION --format json | jq -r .network)
+  echo "CLUSTER_REGION: $CLUSTER_REGION"
+  MASTER_CIDR=$(gcloud container clusters describe $CLUSTER_NAME --region $CLUSTER_REGION --format json | jq -r .privateClusterConfig.masterIpv4CidrBlock)
+  echo "MASTER_CIDR: $MASTER_CIDR"
+  NODE_POOL=$(gcloud container node-pools list --region $CLUSTER_REGION --cluster $CLUSTER_NAME | grep -v NAME | awk '{print $1}')
+  echo "NODE_POOL: $NODE_POOL"
+  TARGET_TAG=$(gcloud container node-pools describe $NODE_POOL --region $CLUSTER_REGION --cluster $CLUSTER_NAME --format json | jq -r .config.tags[0])
+  echo "TARGET_TAG: $TARGET_TAG"
+  gcloud compute firewall-rules create $FIREWALL_RULE --network $NETWORK --allow=tcp:9443 --direction=INGRESS --enable-logging --source-ranges=$MASTER_CIDR --target-tags=$TARGET_TAG || FIREWALL_RULE_STATUS=$?
+fi
 
 echo "############## Finished ##############"
