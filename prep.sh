@@ -75,7 +75,6 @@ if [[ $1 == "uninstall" ]]; then
   exit 0
 fi
 
-update_manifests
 
 # invoke validation function
 environment_validation
