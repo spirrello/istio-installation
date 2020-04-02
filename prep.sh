@@ -33,7 +33,7 @@ environment_validation() {
   error_exit  "$LINENO: Need a cluster name" 1>&2
   else
     CLUSTER_NAME_CHECK=$(gcloud container clusters list --region $REGION --filter "name:$CLUSTER_NAME" --format='value(name)')
-    if [[ "$CLUSTER_NAME" ! = "$CLUSTER_NAME_CHECK" ]]; then
+    if [[ "$CLUSTER_NAME" != "$CLUSTER_NAME_CHECK" ]]; then
       error_exit  "$LINENO: $CLUSTER_NAME not a valid cluster" 1>&2
     fi
   fi
