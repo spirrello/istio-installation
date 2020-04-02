@@ -90,7 +90,7 @@ istioctl manifest apply --set profile=demo
 #might need to run this in the case of timeouts for side car injection
 #fetch info then create firewall rule
 CLUSTER_REGION=$(gcloud container clusters list --filter "name:$CLUSTER_NAME" | grep -v NAME | awk '{print $2}')
-NETWORK=$(gcloud container clusters describe $CLUSTER_NAME --region $CLUSTER_REGION--format json | jq -r .network)
+NETWORK=$(gcloud container clusters describe $CLUSTER_NAME --region $CLUSTER_REGION --format json | jq -r .network)
 echo "CLUSTER_REGION: $CLUSTER_REGION"
 MASTER_CIDR=$(gcloud container clusters describe $CLUSTER_NAME --region $CLUSTER_REGION --format json | jq -r .privateClusterConfig.masterIpv4CidrBlock)
 echo "MASTER_CIDR: $MASTER_CIDR"
