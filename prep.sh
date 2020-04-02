@@ -39,9 +39,27 @@ environment_validation() {
   fi
 }
 
+# update manifest per environment
+update_istio_manifests() {
+  echo "############## updating Istio gateway ##############"
+  sed -i "s/INGRESS_GATEWAY_HOST/$HOST_RECORD/g" manifests/ingressgateway.yaml
+  sed -i "s/ISTIO_VERSION/$ISTIO_VERSION/g" manifests/ingressgateway.yaml
+  kubectl apply -f manifests/ingressgateway.yaml
+}
+
+install_istio() {
+  echo "############## downloading Istio $ISTIO_VERSION ##############"
+  curl -L https://istio.io/downloadIstio | ISTIO_VERSION=$ISTIO_VERSION sh -
+  cd istio-$ISTIO_VERSION
+  export PATH=$PWD/bin:$PATH
+  echo "############## deploying default profile of Istio ##############"
+  istioctl manifest apply --set profile=demo
+}
+
 CLUSTER_NAME=$1
 REGION=$2
 ISTIO_VERSION=$3
+HOST_RECORD=$4
 DEFAULT_ISTIO_VERSION="1.4.3"
 FIREWALL_RULE="$CLUSTER_NAME-allow-master-to-istiowebhook"
 
@@ -56,6 +74,8 @@ if [[ $1 == "uninstall" ]]; then
   uninstall_istio
   exit 0
 fi
+
+update_manifests
 
 # invoke validation function
 environment_validation
@@ -85,31 +105,10 @@ else
   echo "############## default namespace now labeled ##############"
 fi
 
-#download istio
-curl -L https://istio.io/downloadIstio | ISTIO_VERSION=$ISTIO_VERSION sh -
+# install istio function
+install_istio
 
-cd istio-$ISTIO_VERSION
-
-export PATH=$PWD/bin:$PATH
-
-echo "############## deploying default profile of istio ##############"
-istioctl manifest apply --set profile=demo
-
-#might need to run this in the case of timeouts for side car injection
-#fetch info then create firewall rule
-#by default we won't create the firewall rules.
-if [[ $4 == "--fw" ]]; then
-  echo "############## creating firewall rule for istio webhook ##############"
-  CLUSTER_REGION=$(gcloud container clusters list --filter "name:$CLUSTER_NAME" | grep -v NAME | awk '{print $2}')
-  NETWORK=$(gcloud container clusters describe $CLUSTER_NAME --region $CLUSTER_REGION --format json | jq -r .network)
-  echo "CLUSTER_REGION: $CLUSTER_REGION"
-  MASTER_CIDR=$(gcloud container clusters describe $CLUSTER_NAME --region $CLUSTER_REGION --format json | jq -r .privateClusterConfig.masterIpv4CidrBlock)
-  echo "MASTER_CIDR: $MASTER_CIDR"
-  NODE_POOL=$(gcloud container node-pools list --region $CLUSTER_REGION --cluster $CLUSTER_NAME | grep -v NAME | awk '{print $1}')
-  echo "NODE_POOL: $NODE_POOL"
-  TARGET_TAG=$(gcloud container node-pools describe $NODE_POOL --region $CLUSTER_REGION --cluster $CLUSTER_NAME --format json | jq -r .config.tags[0])
-  echo "TARGET_TAG: $TARGET_TAG"
-  gcloud compute firewall-rules create $FIREWALL_RULE --network $NETWORK --allow=tcp:9443 --direction=INGRESS --enable-logging --source-ranges=$MASTER_CIDR --target-tags=$TARGET_TAG || FIREWALL_RULE_STATUS=$?
-fi
+# update Istio manifests
+update_istio_manifests
 
 echo "############## Finished ##############"
