@@ -13,6 +13,7 @@ error_exit() {
 # used for uninstalling istio
 uninstall_istio() {
 	echo "############ uninstalling istio-$ISTIO_VERSION ############"
+  cd $SCRIPT_DIR
   cd istio-$ISTIO_VERSION
   export PATH=$PWD/bin:$PATH
   istioctl manifest generate --set profile=demo | kubectl delete -f -
@@ -20,6 +21,7 @@ uninstall_istio() {
 
 # check cluster and region provided
 environment_validation() {
+  echo "############ validating provided options ############"
   if [[ -z "$REGION" ]]; then
     error_exit  "$LINENO: need a region" 1>&2
   else
@@ -45,6 +47,7 @@ environment_validation() {
       error_exit  "$LINENO: $HOST_RECORD is not a valid host rcord for the Istio ingress gateway." 1>&2
     fi
   fi
+  echo "############## all environment options passed ##############"
 }
 
 # update manifest per environment
@@ -59,7 +62,7 @@ update_istio_manifests() {
 }
 
 install_istio() {
-  echo "############## downloading Istio $ISTIO_VERSION ##############"
+  echo "############## installing Istio $ISTIO_VERSION ##############"
   curl -L https://istio.io/downloadIstio | ISTIO_VERSION=$ISTIO_VERSION sh -
   cd istio-$ISTIO_VERSION
   export PATH=$PWD/bin:$PATH
@@ -87,36 +90,72 @@ prep_gke() {
   fi
 }
 
-CLUSTER_NAME=$1
-REGION=$2
-HOST_RECORD=$3
-ISTIO_VERSION="1.4.3"
+CLUSTER_NAME=$2
+REGION=$3
+HOST_RECORD=$4
+ISTIO_VERSION=${ISTIO_VERSION:-"1.4.3"}
 
 FIREWALL_RULE="$CLUSTER_NAME-allow-master-to-istiowebhook"
 SCRIPT_DIR=$PWD
 
+echo "Working with version: " $ISTIO_VERSION
+
 # uninstall and then exit
-if [[ $1 == "uninstall" ]]; then
-  if [ -z "$2" ]; then
-    ISTIO_VERSION=$DEFAULT_ISTIO_VERSION
-  else
-    ISTIO_VERSION=$2
-  fi
-  uninstall_istio
-  exit 0
-fi
+# if [[ $1 == "uninstall" ]]; then
+#   if [ -z "$2" ]; then
+#     ISTIO_VERSION=$DEFAULT_ISTIO_VERSION
+#   else
+#     ISTIO_VERSION=$2
+#   fi
+#   uninstall_istio
+#   exit 0
+# fi
+
+while [ -n "$1" ]; do # while loop starts
+
+	case "$1" in
+
+	-install)
+    environment_validation
+    # prep_gke
+    # install_istio
+    # update_istio_manifests
+    ;;
+
+	-uninstall)
+		uninstall_istio
+    exit 0
+		;;
+
+	# -c) echo "-c option passed" ;;
+
+	# --)
+	# 	shift # The double dash makes them parameters
+
+	# 	break
+	# 	;;
+
+	# *) echo "Option $1 not recognized" ;;
+
+	esac
+
+	shift
+
+done
+
+exit 0
 
 
 # invoke validation function
-environment_validation
+# environment_validation
 
-# prep k8s for istio installation
-prep_gke
+# # prep k8s for istio installation
+# prep_gke
 
-# install istio function
-install_istio
+# # install istio function
+# install_istio
 
-# update Istio manifests
-update_istio_manifests
+# # update Istio manifests
+# update_istio_manifests
 
 echo "############## Finished ##############"
