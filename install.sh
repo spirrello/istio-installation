@@ -4,6 +4,16 @@
 
 set -e
 
+
+CLUSTER_NAME=$2
+REGION=$3
+HOST_RECORD=$4
+ISTIO_VERSION=${ISTIO_VERSION:-"1.5.1"}
+ISTIO_PROFILE=${ISTIO_PROFILE:-"demo"}
+
+FIREWALL_RULE="$CLUSTER_NAME-allow-master-to-istiowebhook"
+SCRIPT_DIR=$PWD
+
 # error return function
 error_exit() {
 	echo "$1" 1>&2
@@ -15,7 +25,7 @@ uninstall_istio() {
 	echo "############ uninstalling istio-$ISTIO_VERSION ############"
   cd $SCRIPT_DIR
   cd istio-$ISTIO_VERSION
-  export PATH=$PWD/bin:$PATH
+  export PATH=$PWD/istio-$ISTIO_VERSION/bin:$PATH
   istioctl manifest generate --set profile=demo | kubectl delete -f -
 }
 
@@ -27,7 +37,10 @@ environment_validation() {
   else
     REGION_CHECK=$(gcloud compute regions list --filter "name=$REGION" --format='value(name)')
     if [[ "$REGION" != "$REGION_CHECK" ]]; then
-      error_exit  "$LINENO: $REGION not a valid region" 1>&2
+      REGION_CHECK=$(gcloud compute zones list --filter "name=$REGION" --format='value(name)')
+      if [[ "$REGION" != "$REGION_CHECK" ]]; then
+        error_exit  "$LINENO: $REGION not a valid zone or region" 1>&2
+      fi
     fi
   fi
 
@@ -50,24 +63,22 @@ environment_validation() {
   echo "############## all environment options passed ##############"
 }
 
-# update manifest per environment
-update_istio_manifests() {
+# install istio
+install_istio() {
   # traverse back to the root dir
   cd $SCRIPT_DIR
-  echo "############## updating Istio gateway ##############"
+  echo "############## installing istio $ISTIO_VERSION  ##############"
   echo "HOST_RECORD:" $HOST_RECORD
-  sed -i "s/INGRESS_GATEWAY_HOST/$HOST_RECORD/g" manifests/ingressgateway.yaml
-  sed -i "s/ISTIO_VERSION/$ISTIO_VERSION/g" manifests/ingressgateway.yaml
-  kubectl apply -f manifests/ingressgateway.yaml
+  sed "s/INGRESS_GATEWAY_HOST/$HOST_RECORD/g" manifests/$ISTIO_VERSION/full-deployment.yaml | kubectl apply -f -
 }
 
-install_istio() {
-  echo "############## installing Istio $ISTIO_VERSION ##############"
+download_istio() {
+  echo "############## downloading Istio $ISTIO_VERSION ##############"
   curl -L https://istio.io/downloadIstio | ISTIO_VERSION=$ISTIO_VERSION sh -
-  cd istio-$ISTIO_VERSION
-  export PATH=$PWD/bin:$PATH
-  echo "############## deploying default profile of Istio ##############"
-  istioctl manifest apply --set profile=demo
+  #cd istio-$ISTIO_VERSION
+  export PATH=$PWD/istio-$ISTIO_VERSION/bin:$PATH
+  # run pre-flight check
+  istioctl verify-install
 }
 
 # function for prepping gke
@@ -90,26 +101,24 @@ prep_gke() {
   fi
 }
 
-CLUSTER_NAME=$2
-REGION=$3
-HOST_RECORD=$4
-ISTIO_VERSION=${ISTIO_VERSION:-"1.4.3"}
+# used for uninstalling istio
+uninstall_istio() {
+	echo "############ uninstalling istio-$ISTIO_VERSION ############"
+  cd $SCRIPT_DIR
+  export PATH=$PWD/istio-$ISTIO_VERSION/bin:$PATH
+  istioctl manifest generate --set profile=demo | kubectl delete -f -
+}
 
-FIREWALL_RULE="$CLUSTER_NAME-allow-master-to-istiowebhook"
-SCRIPT_DIR=$PWD
+# used for uninstalling istio
+verify_install() {
+	echo "############ verifying installation istio-$ISTIO_VERSION ############"
+  cd $SCRIPT_DIR
+  export PATH=$PWD/istio-$ISTIO_VERSION/bin:$PATH
+  sed "s/INGRESS_GATEWAY_HOST/$HOST_RECORD/g" manifests/$ISTIO_VERSION/full-deployment.yaml | istioctl verify-install -f -
+}
 
-echo "Working with version: " $ISTIO_VERSION
 
-# uninstall and then exit
-# if [[ $1 == "uninstall" ]]; then
-#   if [ -z "$2" ]; then
-#     ISTIO_VERSION=$DEFAULT_ISTIO_VERSION
-#   else
-#     ISTIO_VERSION=$2
-#   fi
-#   uninstall_istio
-#   exit 0
-# fi
+echo "working with version: " $ISTIO_VERSION
 
 while [ -n "$1" ]; do # while loop starts
 
@@ -117,45 +126,22 @@ while [ -n "$1" ]; do # while loop starts
 
 	-install)
     environment_validation
-    # prep_gke
-    # install_istio
-    # update_istio_manifests
+    prep_gke
+    download_istio
+    install_istio
+    verify_install
     ;;
 
 	-uninstall)
 		uninstall_istio
-    exit 0
 		;;
 
-	# -c) echo "-c option passed" ;;
-
-	# --)
-	# 	shift # The double dash makes them parameters
-
-	# 	break
-	# 	;;
-
-	# *) echo "Option $1 not recognized" ;;
+  -verify)
+    verify_install
+    ;;
 
 	esac
 
 	shift
 
 done
-
-exit 0
-
-
-# invoke validation function
-# environment_validation
-
-# # prep k8s for istio installation
-# prep_gke
-
-# # install istio function
-# install_istio
-
-# # update Istio manifests
-# update_istio_manifests
-
-echo "############## Finished ##############"
